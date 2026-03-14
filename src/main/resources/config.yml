@@ -1,0 +1,15 @@
+# ShardSystem v3 Configuration
+admins: []
+discord-webhook-url: "YOUR_WEBHOOK_URL_HERE"
+
+# Website shown in Shards/Ranks categories
+store-url: "store.runemc.org"
+
+# ── SHOP CATEGORIES ──────────────────────────────────────────────────────────
+# Each category has fixed items. Prices are in Shards.
+# Shard price reference: 250=£1.50, 500=£3.00, 1000=£5.00
+# So 1 GBP ≈ 167 shards
+
+shop:
+  # Legacy admin-added items (kept for /shardshop sell compatibility)
+  items: []

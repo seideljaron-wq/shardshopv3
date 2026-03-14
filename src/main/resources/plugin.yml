@@ -1,0 +1,32 @@
+name: ShardSystem
+version: '${project.version}'
+main: dev.shardsystem.ShardSystem
+api-version: '1.20'
+description: ShardSystem v3 - Full featured shard shop
+authors: [RuneMC]
+softdepend:
+  - PlaceholderAPI
+  - Vault
+  - LuckPerms
+
+permissions:
+  shards.admin:
+    description: Manage shard admins
+    default: op
+  shards.give:
+    description: Give shards to players
+    default: op
+  shards.shop.manage:
+    description: Manage the shard shop
+    default: op
+
+commands:
+  shard-admin:
+    description: Manage shard admins
+    usage: /shard-admin <add|remove> <player>
+  shard-give:
+    description: Give shards to a player
+    usage: /shard-give <player> <amount>
+  shardshop:
+    description: Open the shard shop
+    usage: /shardshop [sell <price>|delete]
