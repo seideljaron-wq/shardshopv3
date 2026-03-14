@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -23,25 +24,53 @@ public class GUIClickListener implements Listener {
     private final ShardSystem plugin;
     private final CategoryGUI catGUI;
 
+    // All known GUI titles – used to cancel ANY click inside our GUIs
+    private static final String[] KNOWN_TITLES = {
+        MainMenuGUI.TITLE,
+        CategoryGUI.CAT_SHARDS,
+        CategoryGUI.CAT_SELLWAND,
+        CategoryGUI.CAT_RANKS,
+        CategoryGUI.CAT_BOOSTERS,
+        CategoryGUI.CAT_VAULT,
+        CategoryGUI.CAT_CHATTAGS,
+        CategoryGUI.CAT_CHATCOLOR,
+        CategoryGUI.CAT_MONEY,
+        CategoryGUI.CAT_GRADIENTS,
+        CategoryGUI.CAT_CRATES,
+        CategoryGUI.CAT_GLOWS,
+    };
+
     public GUIClickListener(ShardSystem plugin) {
         this.plugin = plugin;
         this.catGUI = new CategoryGUI(plugin);
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
+
         String title = PlainTextComponentSerializer.plainText()
             .serialize(event.getView().title());
+
+        // ── Always cancel ALL clicks inside our GUIs ──────────────────────────
+        // This includes shift-clicks, number keys, dragging – everything
         if (!isOurGUI(title)) return;
         event.setCancelled(true);
 
+        // Also cancel if they try to move items via keyboard/shift
+        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) return;
+        if (event.getAction() == InventoryAction.COLLECT_TO_CURSOR) return;
+
         ItemStack clicked = event.getCurrentItem();
+
+        // Ignore clicks on empty slots or glass panes
         if (clicked == null || clicked.getType() == Material.AIR) return;
         if (clicked.getType() == Material.GRAY_STAINED_GLASS_PANE) return;
         if (clicked.getType() == Material.BLACK_STAINED_GLASS_PANE) return;
 
+        // Ignore clicks in player's own inventory (bottom half)
         int slot = event.getRawSlot();
+        if (slot >= event.getView().getTopInventory().getSize()) return;
 
         // ── Main Menu ──────────────────────────────────────────────────────────
         if (title.equals(MainMenuGUI.TITLE)) {
@@ -57,8 +86,7 @@ public class GUIClickListener implements Listener {
 
         // ── Confirm GUI ────────────────────────────────────────────────────────
         if (title.startsWith("Confirm: ")) {
-            handleConfirm(player, slot, clicked, title,
-                event.getInventory());
+            handleConfirm(player, slot, clicked, event.getInventory());
             return;
         }
 
@@ -102,36 +130,37 @@ public class GUIClickListener implements Listener {
         reopen(player, new ConfirmGUI(plugin).build(item, price));
     }
 
-    private void handleConfirm(Player player, int slot, ItemStack clicked,
-                                String title, Inventory inv) {
+    private void handleConfirm(Player player, int slot, ItemStack clicked, Inventory inv) {
         if (clicked.getType() == Material.GREEN_STAINED_GLASS_PANE) {
-            // Read center item (slot 13)
             ItemStack center = inv.getItem(13);
-            if (center == null) {
+            ItemStack priceDisplay = inv.getItem(4);
+            if (center == null || priceDisplay == null) {
                 reopen(player, new MainMenuGUI(plugin).build(player));
                 return;
             }
 
-            int price = inv.getItem(4) != null
-                ? extractPriceFromTitle(getPlainName(inv.getItem(4))) : 0;
-            if (price <= 0) {
-                player.sendMessage(Component.text("✗ Could not determine price.", NamedTextColor.RED));
-                reopen(player, new MainMenuGUI(plugin).build(player));
-                return;
-            }
-
+            int price = extractPriceFromName(getPlainName(priceDisplay));
             String category = player.hasMetadata("shop_cat")
                 ? player.getMetadata("shop_cat").get(0).asString() : "Shop";
             player.removeMetadata("shop_cat", plugin);
 
+            if (price <= 0) {
+                player.sendMessage(Component.text("✗ Could not read price.", NamedTextColor.RED));
+                reopen(player, new MainMenuGUI(plugin).build(player));
+                return;
+            }
+
             if (!plugin.getShardManager().hasShards(player, price)) {
-                player.sendMessage(Component.text("✗ You don't have enough Shards!", NamedTextColor.RED));
-                player.sendMessage(Component.text("  You need ", NamedTextColor.GRAY)
-                    .append(Component.text(String.format("%,d", price) + " Shards", NamedTextColor.LIGHT_PURPLE))
-                    .append(Component.text(" but only have ", NamedTextColor.GRAY))
-                    .append(Component.text(
-                        String.format("%,d", plugin.getShardManager().getShards(player)) + " Shards",
-                        NamedTextColor.LIGHT_PURPLE)));
+                player.sendMessage(
+                    Component.text("✗ You don't have enough Shards! ", NamedTextColor.RED)
+                        .append(Component.text("Need: ", NamedTextColor.GRAY))
+                        .append(Component.text(String.format("%,d", price) + " Shards",
+                            NamedTextColor.LIGHT_PURPLE))
+                        .append(Component.text(" | You have: ", NamedTextColor.GRAY))
+                        .append(Component.text(
+                            String.format("%,d", plugin.getShardManager().getShards(player)) + " Shards",
+                            NamedTextColor.LIGHT_PURPLE))
+                );
                 reopen(player, new MainMenuGUI(plugin).build(player));
                 return;
             }
@@ -140,7 +169,7 @@ public class GUIClickListener implements Listener {
             int remaining = plugin.getShardManager().getShards(player);
             String itemName = getPlainName(center);
 
-            // Special: Money category → give actual money via Vault
+            // Special: Money → give via Vault
             if (category.equals(CategoryGUI.CAT_MONEY)) {
                 double money = parseMoney(itemName);
                 if (money > 0 && plugin.getVaultManager().hasVault()) {
@@ -158,9 +187,9 @@ public class GUIClickListener implements Listener {
                 player.sendMessage(
                     Component.text("✔ Purchase successful! ", NamedTextColor.GREEN)
                         .append(Component.text(itemName, NamedTextColor.AQUA)));
-                player.sendMessage(
-                    Component.text("  Your purchase has been logged and will be processed!",
-                        NamedTextColor.GRAY));
+                player.sendMessage(Component.text(
+                    "  Your purchase has been logged and will be processed!",
+                    NamedTextColor.GRAY));
             }
 
             player.sendMessage(
@@ -206,14 +235,13 @@ public class GUIClickListener implements Listener {
         return 0;
     }
 
-    private int extractPriceFromTitle(String title) {
-        // title format: "Cost: X,XXX Shards"
-        String num = title.replaceAll("[^0-9]", "");
+    private int extractPriceFromName(String name) {
+        // "Cost: 1,500 Shards" → 1500
+        String num = name.replaceAll("[^0-9]", "");
         try { return Integer.parseInt(num); } catch (NumberFormatException e) { return 0; }
     }
 
     private double parseMoney(String name) {
-        // e.g. "$10,000 Money" → 10000
         String num = name.replaceAll("[^0-9]", "");
         try { return Double.parseDouble(num); } catch (NumberFormatException e) { return 0; }
     }
@@ -227,9 +255,12 @@ public class GUIClickListener implements Listener {
     }
 
     private boolean isOurGUI(String title) {
-        return title.equals(MainMenuGUI.TITLE)
-            || title.startsWith("✦ ")
-            || title.startsWith("Confirm: ");
+        // Check exact matches first
+        if (title.startsWith("Confirm: ")) return true;
+        for (String known : KNOWN_TITLES) {
+            if (title.equals(known)) return true;
+        }
+        return false;
     }
 
     private void reopen(Player player, Inventory inv) {
