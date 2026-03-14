@@ -65,7 +65,7 @@ public class MainMenuGUI {
         inv.setItem(30, buildCatItem(Material.CYAN_DYE,            "🎨 Chat Colors",      "Custom chat colors",     NamedTextColor.DARK_AQUA));
         inv.setItem(31, buildCatItem(Material.PAPER,               "💰 Money",           "Buy in-game money",      NamedTextColor.GREEN));
         inv.setItem(32, buildCatItem(Material.ORANGE_DYE,          "🌈 Gradients",        "Gradient name colors",   NamedTextColor.GOLD));
-        inv.setItem(33, buildCatItem(Material.TRIAL_KEY,           "🗝 Crate Keys",       "Buy crate keys",         NamedTextColor.LIGHT_PURPLE));
+        inv.setItem(33, buildCatItem(Material.TRIPWIRE_HOOK,       "🗝 Crate Keys",       "Buy crate keys",         NamedTextColor.LIGHT_PURPLE));
 
         // Row 5: Glow (centered)
         inv.setItem(49, buildCatItem(Material.LEATHER_CHESTPLATE,  "✨ Glows",           "Player glow effects",    NamedTextColor.WHITE));
