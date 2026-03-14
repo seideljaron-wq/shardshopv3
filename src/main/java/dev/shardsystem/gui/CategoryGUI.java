@@ -245,7 +245,7 @@ public class CategoryGUI {
             new CrateEntry(Material.ORANGE_CANDLE,  "Epic Crate Key",    "Open Epic crates for great rewards!",         900),
             new CrateEntry(Material.YELLOW_CANDLE,  "Legendary Key",     "Open Legendary crates for amazing rewards!", 1500),
             new CrateEntry(Material.RED_CANDLE,     "Mythic Crate Key",  "Open Mythic crates for the rarest rewards!", 3000),
-            new CrateEntry(Material.TRIAL_KEY,      "RuneMC Special Key","Open the exclusive RuneMC Special crate!",   5000)
+            new CrateEntry(Material.TRIPWIRE_HOOK,  "RuneMC Special Key","Open the exclusive RuneMC Special crate!",   5000)
         );
         int[] slots = {10,11,12,13,14,15};
         for (int i = 0; i < crates.size(); i++) {
